@@ -74,13 +74,67 @@ public class player : MonoBehaviour
             if (spinning)
             {
                 playerBody.transform.Rotate(0, 0, -350 * Time.deltaTime);
-            } else
+            }
+            else
             {
                 playerBody.transform.Rotate(0, 0, -700 * Time.deltaTime);
             }
-        } else
+        }
+        else
         {
             gameOverScreen.SetActive(true);
         }
     }
+    public void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("block") && gameOver == false)
+        {
+            collision.GetComponent<SpriteRenderer>().color = playerBody.GetComponent<SpriteRenderer>().color;
+        }
+        if (collision.gameObject.CompareTag("doubleJumpPowerUp"))
+        {
+            playerBody.GetComponent<SpriteRenderer>().color = Color.green;
+            doubleJumpActive = true;
+            goldPower = false;
+            Destroy(collision.gameObject);
+        }
+        if (collision.gameObject.CompareTag("goldPowerUps"))
+        {
+            playerBody.GetComponent<SpriteRenderer>().color = Color.yellow;
+            goldPower = true;
+            doubleJumpActive = false;
+            Destroy(collision.gameObject);
+        }
+        if (collision.gameObject.CompareTag("Spike") && goldPower == false || collision.gameObject.CompareTag("outOfBounds"))
+        {
+            if (doubleJumpActive == true)
+            {
+                Instantiate(boomGreen, transform.position, Quaternion.Euler(new Vector3(0, 0, 0)));
+            }
+            else if (goldPower == true)
+            {
+                Instantiate(boomGold, transform.position, Quaternion.Euler(new Vector3(0, 0, 0)));
+            }
+            else
+            {
+                Instantiate(boomCyan, transform.position, Quaternion.Euler(new Vector3(0, 0, 0)));
+            }
+            gameOver = true;
+            playerBody.SetActive(false);
+        }
+    }
+    private void DisplayTime(float timeToDisplay)
+    {
+        if (PlayerPrefs.GetFloat("highscore") < timeToDisplay)
+        {
+            PlayerPrefs.SetFloat("highscore", timeToDisplay);
+        }
+        var t0 = (int)timeToDisplay;
+        var m = t0 / 60;
+        var s = (t0 - m * 60);
+        var ms = (int)((timeToDisplay - t0) * 100);
+
+        TimeText.text = $"{m:00}:{s:00}:{ms:00}";
+    }
+
 }
