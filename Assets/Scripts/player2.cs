@@ -1,26 +1,22 @@
 using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-//Using
 using TMPro;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
-
-public class player : MonoBehaviour
+public class player2 : MonoBehaviour
 {
-    //Variables being used
-    public float velocity = 1;
+    public float jumpVelocity = 1;
     private Rigidbody2D rb;
     public GameObject playerBody;
     public bool spinning;
 
     public bool doubleJumpActive;
-    public int doublJumpUsed;
+    public int doubleJumpUsed;
     public float doubleJumpTimer;
 
-    public GameObject boomCyan;
-    public GameObject boomGreen;
-    public GameObject boomGold;
+    public GameObject boomCyan; // normal
+    public GameObject boomGreen; // PowerUp -> Double Jump
+    public GameObject boomGold; // PowerUp -> Inivisble
 
     public bool goldPower;
     public float goldPowerTimer;
@@ -29,8 +25,11 @@ public class player : MonoBehaviour
 
     public TextMeshProUGUI TimeText;
     public float timer;
-
     public GameObject gameOverScreen;
+
+    public Transform groundCheck;
+    public LayerMask groundLayer;
+
 
     // Start is called before the first frame update
     void Start()
@@ -48,31 +47,37 @@ public class player : MonoBehaviour
             timer += Time.deltaTime;
             DisplayTime(timer);
 
-            //Player jumping
+            spinning = Physics2D.Raycast(groundCheck.position, Vector2.down, 0.2f, groundLayer);
+
+            if (spinning)
+            {
+                doubleJumpUsed = 0;
+            }
             if (doubleJumpActive)
             {
-                if (Input.GetMouseButtonDown(0) && spinning == true || Input.GetMouseButtonDown(0) && doublJumpUsed == 1)
+                if (Input.GetMouseButtonDown(0) && (spinning || doubleJumpUsed < 1))
                 {
-                    rb.velocity = Vector2.up * velocity;
-                    doublJumpUsed++;
+                    rb.velocity = Vector2.up * jumpVelocity;
+                    if (!spinning)
+                    {
+                        doubleJumpUsed++;
+                    }
                 }
             }
             else
             {
-                if (Input.GetMouseButtonDown(0) && spinning == true)
+                if (Input.GetMouseButtonDown(0) && spinning)
                 {
-                    rb.velocity = Vector2.up * velocity;
+                    rb.velocity = Vector2.up * jumpVelocity;
                 }
             }
-
-            //rotating block
-            if (spinning == false)
-            {
-                playerBody.transform.Rotate(0, 0, -700 * Time.deltaTime);
-            }
-            else
+            if (spinning)
             {
                 playerBody.transform.Rotate(0, 0, -350 * Time.deltaTime);
+            }
+            else
+            {
+                playerBody.transform.Rotate(0, 0, -700 * Time.deltaTime);
             }
         }
         else
@@ -81,19 +86,13 @@ public class player : MonoBehaviour
         }
     }
 
-    //All Player triggers
+   
     public void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.CompareTag("block") && gameOver == false)
         {
             collision.GetComponent<SpriteRenderer>().color = playerBody.GetComponent<SpriteRenderer>().color;
         }
-        if (collision.gameObject.CompareTag("ground"))
-        {
-            spinning = true;
-            doublJumpUsed = 0;
-        }
-        //power ups
         if (collision.gameObject.CompareTag("doubleJumpPowerUp"))
         {
             playerBody.GetComponent<SpriteRenderer>().color = Color.green;
@@ -102,7 +101,7 @@ public class player : MonoBehaviour
             StartCoroutine(powerGreen());
             Destroy(collision.gameObject);
         }
-        if (collision.gameObject.CompareTag("goldPowerUp"))
+        if (collision.gameObject.CompareTag("goldPowerUps"))
         {
             playerBody.GetComponent<SpriteRenderer>().color = Color.yellow;
             goldPower = true;
@@ -110,63 +109,46 @@ public class player : MonoBehaviour
             StartCoroutine(powerGold());
             Destroy(collision.gameObject);
         }
-        //enemies
-        if (collision.gameObject.CompareTag("spike") && goldPower == false || collision.gameObject.CompareTag("outOfBounds"))
+        if (collision.gameObject.CompareTag("Spike") && goldPower == false || collision.gameObject.CompareTag("outOfBounds"))
         {
             if (doubleJumpActive == true)
             {
                 Instantiate(boomGreen, transform.position, Quaternion.Euler(new Vector3(0, 0, 0)));
-                gameOver = true;
             }
             else if (goldPower == true)
             {
                 Instantiate(boomGold, transform.position, Quaternion.Euler(new Vector3(0, 0, 0)));
-                gameOver = true;
             }
-            else if (gameOver == false)
+            else
             {
                 Instantiate(boomCyan, transform.position, Quaternion.Euler(new Vector3(0, 0, 0)));
-                gameOver = true;
             }
+            gameOver = true;
             StartCoroutine(setGameOver());
             playerBody.SetActive(false);
         }
     }
 
-
-    //when no longer on ground
-    public void OnTriggerExit2D(Collider2D other)
+    IEnumerator setGameOver()
     {
-        if (other.gameObject.CompareTag("ground"))
-        {
-            spinning = false;
-        }
+        yield return new WaitForSeconds(0);
+        Time.timeScale = 0;
     }
-
-    //player color changing
-    IEnumerator powerGold()
+     IEnumerator powerGold()
     {
         yield return new WaitForSeconds(15);
         playerBody.GetComponent<SpriteRenderer>().color = Color.cyan;
         goldPower = false;
-        GetComponent<CircleCollider2D>().enabled = false;
-        GetComponent<CircleCollider2D>().enabled = true;
     }
+
     IEnumerator powerGreen()
     {
-        yield return new WaitForSeconds(15);
+        yield return new WaitForSeconds(12);
         playerBody.GetComponent<SpriteRenderer>().color = Color.cyan;
         doubleJumpActive = false;
-    }
 
-    //Game over set
-    IEnumerator setGameOver()
-    {
-        yield return new WaitForSeconds(1);
-        Time.timeScale = 0;
     }
-
-    //Score counter
+    
     private void DisplayTime(float timeToDisplay)
     {
         if (PlayerPrefs.GetFloat("highscore") < timeToDisplay)
@@ -181,14 +163,18 @@ public class player : MonoBehaviour
         TimeText.text = $"{m:00}:{s:00}:{ms:00}";
     }
 
-    //Buttons
-    public void playAgainB()
+
+
+    public void playAgainBtn()
     {
         SceneManager.LoadScene(1);
     }
-    public void mainMenuB()
+
+    public void MainMenuBtn()
     {
         SceneManager.LoadScene(0);
     }
+
+
 
 }
